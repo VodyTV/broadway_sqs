@@ -54,8 +54,9 @@ defmodule BroadwaySQS.ExAwsClient do
 
   @impl true
   def ack(ack_ref, successful, failed) do
-    IO.inspect(ack_ref)
-    if ack_ref.dead_letter_queue_url do
+    opts = Broadway.TermStorage.get!(ack_ref)
+    IO.inspect(opts)
+    if opts.dead_letter_queue_url do
       failed
       |> Enum.chunk_every(@max_num_messages_allowed_by_aws)
       |> Enum.each(fn messages -> send_messages(messages, ack_ref) end)
