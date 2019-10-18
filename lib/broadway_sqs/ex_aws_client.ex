@@ -79,9 +79,12 @@ defmodule BroadwaySQS.ExAwsClient do
   defp send_messages(messages, ack_ref) do
     new_messages = Enum.map(messages, &extract_failed_message/1)
 
-    opts = Broadway.TermStorage.get!(ack_ref)
+    temp_opts = Broadway.TermStorage.get!(ack_ref)
+    opts =
+      %{temp_opts | queue_url: temp_opts.dead_letter_queue_url}
+      |> Map.delete(:dead_letter_queue_url)
 
-    opts.dead_letter_queue_url
+    opts.queue_url
     |> ExAws.SQS.send_message_batch(new_messages)
     |> ExAws.request(opts.config)
   end
