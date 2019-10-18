@@ -110,11 +110,11 @@ defmodule BroadwaySQS.ExAwsClient do
   end
 
   defp extract_failed_message(message) do
-    IO.inspect(message)
+    {:failed, reason} = message.status
     %{
-      id: message.message_id,
+      id: message.metadata.message_id,
       message_body: Jason.encode!(message.data),
-      message_attributes: [%{name: "reason", data_type: "string", value: "the reason for failure"}]
+      message_attributes: [%{name: "reason", data_type: "string", value: reason}]
     }
   end
 
