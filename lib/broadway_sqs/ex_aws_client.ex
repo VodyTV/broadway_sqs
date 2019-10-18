@@ -117,7 +117,7 @@ defmodule BroadwaySQS.ExAwsClient do
     [
       id: message.metadata.message_id,
       message_body: Jason.encode!(message.data),
-      message_attributes: [%{name: "reason", data_type: "string", value: reason}]
+      message_attributes: [%{name: "reason", data_type: :string, value: reason}]
     ]
   end
 
