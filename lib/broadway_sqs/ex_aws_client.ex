@@ -28,7 +28,7 @@ defmodule BroadwaySQS.ExAwsClient do
   def init(opts) do
     with {:ok, queue_url} <- validate(opts, :queue_url, required: true),
          {:ok, receive_messages_opts} <- validate_receive_messages_opts(opts),
-         {:ok, dead_letter_queue_url} <- validate(opts, :dead_letter_queue_url, default: false),
+         {:ok, dead_letter_queue_url} <- validate(opts, :dead_letter_queue_url, default: ""),
          {:ok, config} <- validate(opts, :config, default: []) do
       ack_ref = Broadway.TermStorage.put(%{queue_url: queue_url, config: config, dead_letter_queue_url: dead_letter_queue_url})
 
@@ -57,14 +57,15 @@ defmodule BroadwaySQS.ExAwsClient do
     opts = Broadway.TermStorage.get!(ack_ref)
 
     to_remove =
-      if opts.dead_letter_queue_url do
-        failed
-        |> Enum.chunk_every(@max_num_messages_allowed_by_aws)
-        |> Enum.each(fn messages -> send_messages(messages, ack_ref) end)
+      case opts.dead_letter_queue_url do
+        "" ->
+          successful
+        _url ->
+          failed
+          |> Enum.chunk_every(@max_num_messages_allowed_by_aws)
+          |> Enum.each(fn messages -> send_messages(messages, ack_ref) end)
 
-        successful ++ failed
-      else
-        successful
+          successful ++ failed
       end
 
     to_remove
@@ -157,6 +158,9 @@ defmodule BroadwaySQS.ExAwsClient do
 
   defp validate_option(:queue_url, value) when not is_binary(value) or value == "",
     do: validation_error(:queue_url, "a non empty string", value)
+
+  defp validate_option(:dead_letter_queue_url, value) when not is_binary(value),
+    do: validation_error(:dead_letter_queue_url, "a string", value)
 
   defp validate_option(:wait_time_seconds, value) when not is_integer(value) or value < 0,
     do: validation_error(:wait_time_seconds, "a non negative integer", value)
