@@ -55,13 +55,19 @@ defmodule BroadwaySQS.ExAwsClient do
   @impl true
   def ack(ack_ref, successful, failed) do
     opts = Broadway.TermStorage.get!(ack_ref)
-    IO.inspect(opts)
-    if opts.dead_letter_queue_url do
-      failed
-      |> Enum.chunk_every(@max_num_messages_allowed_by_aws)
-      |> Enum.each(fn messages -> send_messages(messages, ack_ref) end)
-    end
-    successful ++ failed
+
+    to_remove =
+      if opts.dead_letter_queue_url do
+        failed
+        |> Enum.chunk_every(@max_num_messages_allowed_by_aws)
+        |> Enum.each(fn messages -> send_messages(messages, ack_ref) end)
+
+        successful ++ failed
+      else
+        successful
+      end
+
+    to_remove
     |> Enum.chunk_every(@max_num_messages_allowed_by_aws)
     |> Enum.each(fn messages -> delete_messages(messages, ack_ref) end)
   end
@@ -116,7 +122,7 @@ defmodule BroadwaySQS.ExAwsClient do
     {:failed, reason} = message.status
     [
       id: message.metadata.message_id,
-      message_body: Jason.encode!(message.data),
+      message_body: message.data,
       message_attributes: [%{name: "reason", data_type: :string, value: reason}]
     ]
   end
